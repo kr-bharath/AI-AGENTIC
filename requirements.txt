@@ -1,0 +1,19 @@
+# --- Core ---
+python-dotenv==1.0.1
+
+# --- Database / vector store ---
+psycopg2-binary==2.9.9
+pgvector==0.3.6
+
+# --- Embeddings (fully local, free, no API key needed) ---
+sentence-transformers==3.0.1
+
+# --- LLM providers (free tiers) ---
+google-generativeai==0.8.3
+groq==0.11.0
+
+# --- Document loading ---
+pypdf==5.0.1
+
+# --- Misc ---
+numpy<2.0

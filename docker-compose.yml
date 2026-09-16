@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: knowledgeforge-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kf_user
+      POSTGRES_PASSWORD: kf_password
+      POSTGRES_DB: knowledgeforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kf_user -d knowledgeforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# Redis (semantic cache) and Ollama (local model routing) get added here in Phase 4.
+# Keeping the stack minimal for Phase 1 so it's easy to reason about.
+
+volumes:
+  pgdata:
