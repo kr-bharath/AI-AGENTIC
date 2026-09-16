@@ -87,3 +87,61 @@ from, ordered by relevance.
 The agentic layer (LangGraph) gets added on top of this — it will call the
 same `db.search()` and `llm.generate()` functions you already have here, so
 nothing in Phase 1 gets thrown away.
+
+## Phase 2: Agent Layer
+
+Adds `src/agent.py` — a LangGraph agent that sits on top of everything in
+Phase 1 without changing it.
+
+**What it does differently from `ask.py`:**
+
+- **Routes** each request: a quick keyword check, falling back to an LLM
+  classification call only when the request is ambiguous, decides whether
+  it's a simple lookup or a multi-step task.
+- **Simple requests** go through the same retrieval + QA prompt as Phase 1.
+- **Multi-step requests** (e.g. "compare X and Y in a table") retrieve more
+  broadly, group the retrieved chunks by source document, and use a
+  comparison prompt built for structured output.
+- **Self-checks** multi-step answers with an LLM-as-judge pass: if the
+  answer isn't grounded or didn't actually complete the task (e.g. no table
+  when one was asked for), it retries once with the failure reason fed back
+  into the prompt, then stops — it will never loop forever.
+- Simple lookups skip the self-check call entirely to avoid spending an
+  extra API call where it wouldn't change the outcome — the same
+  cost-conscious instinct Phase 4 builds out fully.
+
+### Install the new dependency
+
+```bash
+pip install -r requirements.txt
+```
+
+(This adds `langgraph` to what you already installed in Phase 1.)
+
+### Try it
+
+```bash
+python -m src.agent "Why do teams use RAG instead of fine-tuning?"
+```
+
+Simple question → routes to `simple`, answers directly, no self-check.
+
+```bash
+python -m src.agent "Compare chunking and embedding, and give me a table"
+```
+
+Multi-step → routes to `multi_step`, retrieves broadly, produces a table,
+self-checks it, and reports whether the check passed.
+
+### Sanity check the routing yourself
+
+```bash
+python -c "from src.agent import classify_task; print(classify_task('What is RAG?'))"
+python -c "from src.agent import classify_task; print(classify_task('Summarize all the docs and compare them'))"
+```
+Should print `simple` and `multi_step` respectively.
+
+## What's next (Phase 3)
+
+Evaluation & observability — a golden Q&A set scored with RAGAS, plus
+Langfuse tracing on every call this agent already makes.

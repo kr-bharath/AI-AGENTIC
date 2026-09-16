@@ -13,8 +13,8 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-GEMINI_MODEL = "gemini-2.0-flash"
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GEMINI_MODEL = "gemini-flash-latest"  # alias -- auto-tracks Google's current stable Flash model
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 # --- Database ---
 DATABASE_URL = os.getenv(

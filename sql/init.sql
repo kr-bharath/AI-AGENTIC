@@ -13,8 +13,10 @@ CREATE TABLE IF NOT EXISTS chunks (
 
 -- Approximate nearest-neighbor index for fast cosine-similarity search.
 -- ivfflat needs data in the table before it's useful; fine to create up front for a small corpus.
-CREATE INDEX IF NOT EXISTS chunks_embedding_idx
-    ON chunks USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 100);
+
+
+-- CREATE INDEX IF NOT EXISTS chunks_embedding_idx
+--     ON chunks USING ivfflat (embedding vector_cosine_ops)
+--     WITH (lists = 100);
 
 CREATE INDEX IF NOT EXISTS chunks_source_idx ON chunks (source);
