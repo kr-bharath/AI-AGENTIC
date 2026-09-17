@@ -125,3 +125,54 @@ def build_self_check_prompt(task: str, answer: str, retrieved_chunks: list) -> s
         f"[{c['source']} #{c['chunk_index']}] {c['content']}" for c in retrieved_chunks
     )
     return SELF_CHECK_TEMPLATE.format(task=task, context=context, answer=answer)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 additions -- LLM-as-judge evaluation (faithfulness, relevancy, precision)
+# ---------------------------------------------------------------------------
+# Deliberately NOT using the RAGAS library here: as of this build, ragas==0.4.3
+# pulls in langchain_community/langchain_openai versions that hard-conflict with
+# langgraph==1.2.11 (which needs langchain-core>=1.4) -- installing both breaks
+# the environment. This harness reimplements the same three metrics as direct
+# LLM-as-judge calls against the provider you already have configured, with no
+# extra dependency and no conflict risk.
+
+SYSTEM_JUDGE = (
+    "You are a strict, impartial evaluator of a RAG (retrieval-augmented "
+    "generation) system. You will be given a QUESTION, the CONTEXT that was "
+    "retrieved for it, and the ANSWER the system produced. Score three things "
+    "independently, each from 0.0 to 1.0:\n"
+    "- faithfulness: does every claim in the ANSWER actually appear in or "
+    "follow from the CONTEXT? A correct refusal (saying the context doesn't "
+    "cover it, when that's true) is fully faithful (1.0) -- faithfulness is "
+    "about not fabricating unsupported claims, not about whether a question "
+    "got answered.\n"
+    "- answer_relevancy: does the ANSWER actually address what the QUESTION "
+    "asked (regardless of whether it drew on the context correctly)?\n"
+    "- context_precision: was the retrieved CONTEXT actually relevant to "
+    "answering the QUESTION, or mostly irrelevant material?\n"
+    "Respond with ONLY a JSON object, no markdown fences, no prose: "
+    '{"faithfulness": <float>, "answer_relevancy": <float>, '
+    '"context_precision": <float>, "notes": "<one short sentence>"}'
+)
+
+JUDGE_TEMPLATE = """QUESTION:
+{question}
+
+CONTEXT:
+{context}
+
+ANSWER:
+{answer}
+
+Return the JSON scoring object now."""
+
+
+def build_judge_prompt(question: str, retrieved_chunks: list, answer: str) -> str:
+    if retrieved_chunks:
+        context = "\n\n".join(
+            f"[{c['source']} #{c['chunk_index']}] {c['content']}" for c in retrieved_chunks
+        )
+    else:
+        context = "(no context was retrieved)"
+    return JUDGE_TEMPLATE.format(question=question, context=context, answer=answer)

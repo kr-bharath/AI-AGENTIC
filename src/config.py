@@ -31,6 +31,18 @@ CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 500))
 CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 50))
 TOP_K = int(os.getenv("TOP_K", 4))
 
+# --- Observability (Phase 3) ---
+# Optional: leave blank and tracing silently no-ops (confirmed safe -- @observe
+# just logs a warning and the app runs normally without a Langfuse account).
+LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
+LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
+# --- Evaluation (Phase 3) ---
+# Regression gate: eval.py exits non-zero if the average faithfulness score
+# across the golden set drops below this. Becomes the CI/CD quality gate in Phase 7.
+EVAL_FAITHFULNESS_THRESHOLD = float(os.getenv("EVAL_FAITHFULNESS_THRESHOLD", 0.7))
+
 
 def validate():
     """Fail fast with a clear message instead of a cryptic error mid-pipeline."""

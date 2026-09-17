@@ -20,6 +20,7 @@ import psycopg2
 from pgvector.psycopg2 import register_vector
 
 from . import config
+from .tracing import observe
 
 
 # ============================================================
@@ -179,6 +180,7 @@ def delete_source(source: str) -> int:
 # VECTOR SEARCH
 # ============================================================
 
+@observe(name="vector_search", as_type="retriever")
 def search(
     query_embedding: List[float],
     top_k: Optional[int] = None,

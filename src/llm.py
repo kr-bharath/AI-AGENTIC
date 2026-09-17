@@ -6,6 +6,7 @@ with a third option ("local") pointed at Ollama, no changes needed elsewhere.
 import time
 
 from . import config
+from .tracing import observe
 
 
 def _generate_gemini(prompt: str, system: str = None) -> str:
@@ -16,14 +17,25 @@ def _generate_gemini(prompt: str, system: str = None) -> str:
         config.GEMINI_MODEL,
         system_instruction=system,
     )
-    response = model.generate_content(prompt)
+    # retry=None explicitly overrides the SDK's own baked-in retry-with-sleep
+    # (confirmed via the gapic client signature: the default is a distinct
+    # _MethodDefault sentinel, so passing None here really does disable it,
+    # rather than falling back to the default). Without this, a 429 gets
+    # retried twice -- once silently inside the SDK, then again by our own
+    # _with_retry -- which stacks into a long, silent-looking wait.
+    response = model.generate_content(prompt, request_options={"retry": None})
     return response.text
 
 
 def _generate_groq(prompt: str, system: str = None) -> str:
     from groq import Groq
 
-    client = Groq(api_key=config.GROQ_API_KEY)
+    # max_retries=0: same reasoning as Gemini's retry=None above -- the groq
+    # client retries 429s internally by default (confirmed: default is 2),
+    # which happens BEFORE our own _with_retry ever sees the exception. That
+    # produced exactly the "looks frozen" experience -- disable it here so
+    # _with_retry has sole, visible control over backoff.
+    client = Groq(api_key=config.GROQ_API_KEY, max_retries=0)
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
@@ -81,9 +93,15 @@ def _with_retry(fn, max_retries: int = 3, base_delay: float = 10.0):
     raise last_err  # pragma: no cover -- loop always returns or raises above
 
 
+@observe(name="llm_generate", as_type="generation")
 def generate(prompt: str, system: str = None, provider: str = None) -> str:
     """
     provider: "gemini" | "groq" | None (falls back to config.LLM_PROVIDER)
+
+    Traced via Langfuse's @observe -- every call from ask.py and agent.py
+    passes through here, so both get tracing for free with no changes to
+    either file. If Langfuse isn't configured (no keys in .env), this
+    decorator silently no-ops -- confirmed safe, not just assumed.
     """
     provider = (provider or config.LLM_PROVIDER).lower()
 

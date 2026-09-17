@@ -1,0 +1,14 @@
+[
+  {"id": "q01", "question": "What is Retrieval-Augmented Generation?"},
+  {"id": "q02", "question": "Why do teams use RAG instead of fine-tuning?"},
+  {"id": "q03", "question": "What are the five steps of the RAG pipeline?"},
+  {"id": "q04", "question": "What is chunking and why is it needed?"},
+  {"id": "q05", "question": "What does an embedding model do to a text chunk?"},
+  {"id": "q06", "question": "What role does Postgres with pgvector play in a RAG system?"},
+  {"id": "q07", "question": "How is similarity between a question and a stored chunk typically measured?"},
+  {"id": "q08", "question": "What happens during the generation step of a RAG pipeline?"},
+  {"id": "q09", "question": "What is a common failure mode related to chunk size?"},
+  {"id": "q10", "question": "What happens if the embedding model differs between ingestion and query time?"},
+  {"id": "q11", "question": "Why is evaluation treated as a first-class part of a production RAG system?"},
+  {"id": "q12", "question": "What is the capital of France?"}
+]

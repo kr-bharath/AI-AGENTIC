@@ -18,5 +18,13 @@ pypdf==5.0.1
 # --- Agent orchestration (Phase 2) ---
 langgraph==1.2.11
 
+# --- Observability (Phase 3) ---
+# NOTE: ragas is deliberately NOT included -- ragas==0.4.3 requires
+# langchain_community/langchain_openai versions that conflict with
+# langgraph==1.2.11's langchain-core>=1.4 requirement. Phase 3's eval
+# harness (src/eval.py) reimplements the same metrics as direct
+# LLM-as-judge calls instead, using the LLM provider you already have.
+langfuse==4.15.3
+
 # --- Misc ---
 numpy<2.0

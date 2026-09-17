@@ -145,3 +145,67 @@ Should print `simple` and `multi_step` respectively.
 
 Evaluation & observability — a golden Q&A set scored with RAGAS, plus
 Langfuse tracing on every call this agent already makes.
+
+## Phase 3: Evaluation & Observability
+
+Adds `src/eval.py` and `data/golden_qa.json` on top of everything in Phases 1–2,
+plus tracing wired directly into `llm.generate()` and `db.search()` -- so both
+`ask.py` and `agent.py` get traced with zero changes to either file.
+
+**A note on RAGAS:** the roadmap originally called for the RAGAS library here.
+It's deliberately not used -- `ragas==0.4.3` requires `langchain_community`/
+`langchain_openai` versions that hard-conflict with `langgraph==1.2.11`'s
+`langchain-core>=1.4` requirement (confirmed by actually trying to install both
+together -- it breaks the environment). Phase 3 reimplements the same three
+metrics -- faithfulness, answer relevancy, context precision -- as direct
+LLM-as-judge calls using the provider you've already configured. No extra
+dependency, no conflict risk.
+
+### Install the new dependency
+
+```bash
+pip install -r requirements.txt
+```
+
+(Adds `langfuse` -- `sentence-transformers`/`torch` already installed in
+Phase 1 have no dependency overlap with it, confirmed.)
+
+### Optional: set up free tracing
+
+Tracing is fully optional -- confirmed safe to skip: if `LANGFUSE_PUBLIC_KEY`
+is blank, `@observe` just no-ops with a harmless warning, nothing breaks.
+
+To enable it: free account at https://cloud.langfuse.com, then in `.env`:
+```
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+```
+Every `ask.py` and `agent.py` call will then show up as a trace in your
+Langfuse dashboard automatically.
+
+### Run the eval harness
+
+```bash
+python -m src.eval
+```
+
+Runs all 12 questions in `data/golden_qa.json` through the Phase 1 pipeline,
+scores each with an LLM-as-judge, and writes `eval_report.md`. Exits with code
+1 if average faithfulness drops below `EVAL_FAITHFULNESS_THRESHOLD` (default
+0.7) -- this exact check becomes the CI/CD quality gate in Phase 7.
+
+Question `q12` ("What is the capital of France?") is a deliberate negative
+control -- it's not covered by the ingested docs, so a correct answer here is
+one that says so rather than answering from outside knowledge. That's scored
+as high faithfulness, not a failure.
+
+### Extend the golden set
+
+As you ingest your own documents, add more questions to `data/golden_qa.json`
+in the same `{"id": ..., "question": ...}` shape -- no code changes needed.
+
+## What's next (Phase 4)
+
+Cost & latency optimization: a local Ollama model for cheap-query routing, and
+a Redis semantic cache -- both slot into `llm.py`'s existing `generate()`
+abstraction the same way Gemini/Groq did.
