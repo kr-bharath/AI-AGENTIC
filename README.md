@@ -204,8 +204,102 @@ as high faithfulness, not a failure.
 As you ingest your own documents, add more questions to `data/golden_qa.json`
 in the same `{"id": ..., "question": ...}` shape -- no code changes needed.
 
-## What's next (Phase 4)
+## Phase 4: Cost & Latency Optimization
 
-Cost & latency optimization: a local Ollama model for cheap-query routing, and
-a Redis semantic cache -- both slot into `llm.py`'s existing `generate()`
-abstraction the same way Gemini/Groq did.
+Adds `src/cost_router.py`, `src/cache.py`, `src/benchmark.py`, and a `local`
+provider option in `llm.py`. Wired into `ask.py` specifically (not
+`agent.py`'s internal calls -- see note below).
+
+**How it works, in order, for every automatic (non-override) call to `ask()`:**
+1. **Semantic cache check** -- embeds the question locally (free) and checks
+   Redis for a similar-enough previous question (cosine similarity, default
+   threshold 0.93). Hit -> instant answer, zero LLM calls, zero cost.
+2. **Local routing** -- a cheap heuristic (word count + keyword check, no LLM
+   call) decides if the question is simple enough for a local Ollama model.
+   If so, and Ollama responds, that's the answer -- genuinely $0.
+3. **Cloud fallback** -- anything else (or if Ollama isn't running) goes to
+   your configured cloud provider, exactly like Phases 1-3.
+
+**Explicit overrides always bypass all of this** -- `ask(q, provider="groq")`
+and the `--provider` CLI flag behave exactly as before, and `eval.py` now
+calls `ask(q, optimize=False)` specifically so evaluation scores your actual
+configured provider, not a cached or locally-routed answer.
+
+### Install the new dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Set up Redis (required for caching)
+
+```bash
+docker compose up -d
+```
+
+This now also starts a `redis` container alongside Postgres. If Redis is
+unreachable for any reason, caching fails open automatically -- confirmed via
+testing, not just assumed: `ask()` just runs the normal local/cloud path with
+one warning printed, nothing crashes.
+
+### Set up Ollama (optional, for local routing)
+
+Ollama is installed **natively**, not in Docker -- it needs direct hardware
+access for reasonable speed, which fights with Docker Desktop on Windows.
+
+1. Download and install: https://ollama.com/download
+2. Pull a small model:
+```bash
+ollama pull llama3.2:3b
+```
+3. Make sure it's running (the installer usually starts it automatically):
+```bash
+ollama list
+```
+
+If you skip this entirely, that's fine -- confirmed via testing: local
+routing attempts fail with a connection error, which `ask()` catches and
+falls back to cloud automatically, no crash.
+
+### Try it
+
+```bash
+python -m src.ask "What is RAG?"
+```
+Short question, no complexity keywords -> should route to `local` (if Ollama
+is set up) or `cloud` (if not).
+
+```bash
+python -m src.ask "What is RAG?"
+```
+Same question again -> should route to `cache`, answer comes back instantly.
+
+```bash
+python -m src.ask "Compare chunking and embedding in depth"
+```
+Longer, keyword-triggered -> routes to `cloud` regardless of Ollama.
+
+### Run the benchmark
+
+```bash
+python -m src.benchmark
+```
+
+Runs the golden set three ways -- no optimization, optimized cold-cache, and
+optimized warm-cache (same questions repeated) -- and writes
+`cost_optimization_report.md` with latency and estimated $ saved. This report
+is your concrete "here's the number" answer for the cost-optimization
+interview question.
+
+### A scoping note
+
+Caching and local-routing are wired into `ask.py` (the direct Q&A path)
+specifically, not into `agent.py`'s internal `generate()` calls (routing,
+synthesis, self-check). Extending the same pattern there is a natural next
+step, deliberately left out here to avoid touching Phase 2's already-tested
+agent graph.
+
+## What's next (Phase 5)
+
+FastAPI serving layer -- wraps ingestion, `ask()`, and the agent behind REST
+endpoints with interactive Swagger docs.

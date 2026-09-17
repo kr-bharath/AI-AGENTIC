@@ -48,6 +48,26 @@ def _generate_groq(prompt: str, system: str = None) -> str:
     return response.choices[0].message.content
 
 
+def _generate_local(prompt: str, system: str = None) -> str:
+    """
+    Phase 4: routes simple questions here instead of a cloud API -- genuinely
+    $0 per call, but only useful if the person has Ollama installed and
+    running (`ollama serve`, plus `ollama pull llama3.2:3b` or similar).
+    If it's not running, this raises a connection error, which cost_router's
+    caller catches and falls back to cloud -- never a hard failure.
+    """
+    import ollama
+
+    client = ollama.Client(host=config.OLLAMA_HOST)
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    response = client.chat(model=config.OLLAMA_MODEL, messages=messages)
+    return response.message.content
+
+
 def _is_rate_limit_error(err: Exception) -> bool:
     msg = str(err).lower()
     return "429" in msg or "resourceexhausted" in msg or "rate limit" in msg or "quota" in msg
@@ -96,7 +116,7 @@ def _with_retry(fn, max_retries: int = 3, base_delay: float = 10.0):
 @observe(name="llm_generate", as_type="generation")
 def generate(prompt: str, system: str = None, provider: str = None) -> str:
     """
-    provider: "gemini" | "groq" | None (falls back to config.LLM_PROVIDER)
+    provider: "gemini" | "groq" | "local" | None (falls back to config.LLM_PROVIDER)
 
     Traced via Langfuse's @observe -- every call from ask.py and agent.py
     passes through here, so both get tracing for free with no changes to
@@ -109,5 +129,10 @@ def generate(prompt: str, system: str = None, provider: str = None) -> str:
         return _with_retry(lambda: _generate_gemini(prompt, system))
     elif provider == "groq":
         return _with_retry(lambda: _generate_groq(prompt, system))
+    elif provider == "local":
+        # No retry wrapper here -- if Ollama isn't running, retrying with
+        # backoff won't fix that, and the caller (cost_router-driven code in
+        # ask.py) already catches this and falls back to cloud immediately.
+        return _generate_local(prompt, system)
     else:
-        raise ValueError(f"Unknown provider '{provider}' -- use 'gemini' or 'groq'")
+        raise ValueError(f"Unknown provider '{provider}' -- use 'gemini', 'groq', or 'local'")

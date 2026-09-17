@@ -18,8 +18,25 @@ services:
       timeout: 5s
       retries: 5
 
-# Redis (semantic cache) and Ollama (local model routing) get added here in Phase 4.
-# Keeping the stack minimal for Phase 1 so it's easy to reason about.
+  redis:
+    image: redis:7-alpine
+    container_name: knowledgeforge-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+# Ollama is NOT containerized here deliberately -- it needs direct GPU/CPU
+# access for reasonable performance, which fights with Docker Desktop on
+# Windows. Install it natively instead: https://ollama.com/download
+# Phase 4's README section has the exact setup steps.
 
 volumes:
   pgdata:
+  redisdata:

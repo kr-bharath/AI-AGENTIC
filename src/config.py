@@ -43,6 +43,23 @@ LANGFUSE_HOST = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 # across the golden set drops below this. Becomes the CI/CD quality gate in Phase 7.
 EVAL_FAITHFULNESS_THRESHOLD = float(os.getenv("EVAL_FAITHFULNESS_THRESHOLD", 0.7))
 
+# --- Cost & latency optimization (Phase 4) ---
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+SEMANTIC_CACHE_THRESHOLD = float(os.getenv("SEMANTIC_CACHE_THRESHOLD", 0.93))
+SEMANTIC_CACHE_TTL_SECONDS = int(os.getenv("SEMANTIC_CACHE_TTL_SECONDS", 86400))
+SEMANTIC_CACHE_MAX_ENTRIES = int(os.getenv("SEMANTIC_CACHE_MAX_ENTRIES", 200))
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+
+# Rough per-call cost estimates for the benchmark report, in USD. These are
+# deliberately approximate (free-tier APIs don't bill you directly) -- they
+# exist to make the "$ saved by routing/caching" number concrete rather than
+# to be an exact bill. Based on published per-token pricing for a typical
+# short RAG prompt+answer (~800 input / ~200 output tokens) if you were on
+# a paid tier; local Ollama and cache hits are genuinely $0.
+EST_COST_PER_CLOUD_CALL_USD = float(os.getenv("EST_COST_PER_CLOUD_CALL_USD", 0.0006))
+
 
 def validate():
     """Fail fast with a clear message instead of a cryptic error mid-pipeline."""

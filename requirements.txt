@@ -26,5 +26,9 @@ langgraph==1.2.11
 # LLM-as-judge calls instead, using the LLM provider you already have.
 langfuse==4.15.3
 
+# --- Cost & latency optimization (Phase 4) ---
+redis==6.4.0
+ollama==0.6.2
+
 # --- Misc ---
 numpy<2.0

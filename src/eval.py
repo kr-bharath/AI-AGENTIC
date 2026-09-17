@@ -66,7 +66,11 @@ def run_eval(golden_set_path: Path = GOLDEN_SET_PATH) -> dict:
     results = []
     for item in golden_set:
         question = item["question"]
-        rag_result = ask(question)
+        # optimize=False -- eval must score the actual configured provider's
+        # output, not a cached answer or a cheaper local-model substitution.
+        # Phase 4 added that routing to ask(); scoring it here would make
+        # eval results depend on cache state and non-reproducible.
+        rag_result = ask(question, optimize=False)
 
         # ask() only returns source/chunk_index/distance (not chunk text) --
         # the judge needs the actual retrieved content, so re-run retrieval
