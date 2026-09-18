@@ -299,7 +299,70 @@ synthesis, self-check). Extending the same pattern there is a natural next
 step, deliberately left out here to avoid touching Phase 2's already-tested
 agent graph.
 
-## What's next (Phase 5)
+## Phase 5: Serving Layer
 
-FastAPI serving layer -- wraps ingestion, `ask()`, and the agent behind REST
-endpoints with interactive Swagger docs.
+Adds `src/api.py` and `src/schemas.py` -- a thin FastAPI layer over
+everything already built. It doesn't reimplement any pipeline logic; every
+endpoint just calls the same `ask()`, `run_agent()`, and `ingest_file()`
+functions the CLI tools already use.
+
+### Endpoints
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/health` | No | Uptime check, unauthenticated on purpose |
+| GET | `/metrics` | Yes | DB/pgvector health + chunk counts per source |
+| POST | `/ask` | Yes | Same as `python -m src.ask`, over HTTP |
+| POST | `/agent` | Yes | Same as `python -m src.agent`, over HTTP |
+| POST | `/ingest` | Yes | Upload a `.txt`/`.md`/`.pdf` file to ingest |
+
+### Install the new dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Run it
+
+```bash
+uvicorn src.api:app --reload --port 8000
+```
+
+Open **http://127.0.0.1:8000/docs** -- interactive Swagger UI, you can call
+every endpoint directly from the browser.
+
+### Auth
+
+Blank `API_KEY` in `.env` (the default) disables auth entirely -- fine for
+local dev, confirmed via testing that every endpoint is reachable with no
+header. Set a real value and every endpoint except `/health` then requires
+an `X-API-Key` header matching it -- also confirmed via testing (right key
+-> 200, wrong or missing key -> 401), including that `/metrics` and
+`/ingest` are covered, not just `/ask`.
+
+### Try it (with auth off)
+
+```bash
+curl -X POST http://127.0.0.1:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is RAG?"}'
+```
+
+```bash
+curl http://127.0.0.1:8000/metrics
+```
+
+### A note on error handling
+
+Every endpoint catches its own failure mode and returns a real status code
+instead of a raw traceback -- generation failure is a 502, DB unreachable is
+a 503, bad input is a 422, missing/wrong API key is a 401. There's also a
+catch-all handler underneath all of that so an unexpected bug still returns
+a clean 500 instead of crashing the server. All of this is covered by tests,
+not just written and hoped to work.
+
+## What's next (Phase 6)
+
+Containerization -- a Dockerfile for this API and a docker-compose.yml
+extension that brings up the whole stack (app + Postgres + Redis) with one
+command.

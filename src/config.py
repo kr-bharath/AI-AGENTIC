@@ -60,6 +60,11 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 # a paid tier; local Ollama and cache hits are genuinely $0.
 EST_COST_PER_CLOUD_CALL_USD = float(os.getenv("EST_COST_PER_CLOUD_CALL_USD", 0.0006))
 
+# --- API (Phase 5) ---
+# Blank disables auth entirely (fine for local dev) -- same "blank = off"
+# pattern as Langfuse. Set a real value before this is reachable off your machine.
+API_KEY = os.getenv("API_KEY", "")
+
 
 def validate():
     """Fail fast with a clear message instead of a cryptic error mid-pipeline."""
