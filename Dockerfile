@@ -15,6 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY data/ ./data/
 
+# Hugging Face Spaces refuses to run Docker containers as root -- create a
+# non-root user and hand ownership of /app to it before the final CMD runs.
+RUN useradd -m -u 1000 user && chown -R user:user /app
+USER user
+ENV HOME=/home/user PATH=/home/user/.local/bin:$PATH
+
 EXPOSE 8000
 
 # Binding 0.0.0.0, not 127.0.0.1 -- required for the port mapping in
