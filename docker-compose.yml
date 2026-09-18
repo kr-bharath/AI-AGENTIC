@@ -32,10 +32,48 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build: .
+    container_name: knowledgeforge-app
+    restart: unless-stopped
+    env_file:
+      - .env  # API keys, LLM_PROVIDER, etc. -- never baked into the image itself
+    environment:
+      # These three override whatever's in .env (Compose gives environment:
+      # priority over env_file: for the same key). .env has "localhost",
+      # which is correct for running the app natively on your machine but
+      # WRONG from inside a container -- a container's "localhost" is
+      # itself, not the host or its sibling containers.
+      DATABASE_URL: postgresql://kf_user:kf_password@postgres:5432/knowledgeforge
+      REDIS_URL: redis://redis:6379/0
+      # host.docker.internal resolves to your actual machine from inside a
+      # container -- this is what lets the containerized app reach the
+      # natively-running Ollama from Phase 4. Works out of the box on
+      # Docker Desktop (Windows/Mac); the extra_hosts entry below is what
+      # makes the same compose file also work on native Linux Docker,
+      # where that resolution isn't automatic.
+      OLLAMA_HOST: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 # Ollama is NOT containerized here deliberately -- it needs direct GPU/CPU
 # access for reasonable performance, which fights with Docker Desktop on
 # Windows. Install it natively instead: https://ollama.com/download
-# Phase 4's README section has the exact setup steps.
+# Phase 4's README section has the exact setup steps. The app container
+# reaches it via host.docker.internal, configured above.
 
 volumes:
   pgdata:

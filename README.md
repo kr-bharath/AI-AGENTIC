@@ -361,8 +361,92 @@ catch-all handler underneath all of that so an unexpected bug still returns
 a clean 500 instead of crashing the server. All of this is covered by tests,
 not just written and hoped to work.
 
-## What's next (Phase 6)
+## Phase 6: Containerization
 
-Containerization -- a Dockerfile for this API and a docker-compose.yml
-extension that brings up the whole stack (app + Postgres + Redis) with one
-command.
+Adds a `Dockerfile` for the FastAPI app and a third service (`app`) in
+`docker-compose.yml`, so the whole stack -- app, Postgres, Redis -- comes up
+with one command.
+
+**Honest caveat:** Docker itself isn't available in the environment these
+files were built in, so the actual `docker build` / `docker compose up`
+couldn't be run end-to-end before reaching you -- this is the one piece of
+this project not verified by a real run before shipping. What *was* verified:
+the exact `uvicorn` command in the Dockerfile's `CMD` was run directly and
+confirmed working (`/health`, `/docs`, `/openapi.json` all returned 200),
+every pinned dependency in `requirements.txt` has already installed cleanly
+multiple times over the course of this build, and `sentence-transformers`'
+actual package metadata was checked to confirm the CPU-only torch build
+(below) satisfies its requirement. If the build itself hits a snag, treat it
+like every other phase here -- paste the exact error and we'll fix it from
+a real signal instead of guessing further.
+
+### Why a CPU-only torch install
+
+The default PyPI `torch` wheel bundles CUDA and is 750MB+, even though this
+project never uses a GPU. `sentence-transformers==3.0.1` only requires
+`torch>=1.11.0` (confirmed from its own package metadata) -- the Dockerfile
+installs a CPU-only build from PyTorch's own index first, which satisfies
+that constraint at a fraction of the size, before the rest of
+`requirements.txt` installs normally.
+
+### Why Ollama still isn't containerized
+
+Same reasoning as Phase 4: Ollama needs direct hardware access for
+reasonable speed, which fights with Docker Desktop on Windows. It keeps
+running natively. The containerized app reaches it via
+`host.docker.internal`, which Compose resolves to your actual machine from
+inside a container -- configured in `docker-compose.yml`'s `app` service.
+
+### A critical detail if you ever edit these files
+
+Inside a container, `localhost` means *that container*, not your machine or
+its sibling containers. So while your `.env`'s `DATABASE_URL` and
+`REDIS_URL` correctly say `localhost` (right for running the app natively,
+which Phases 1-5 have been doing), the containerized `app` service
+overrides both to use Postgres's and Redis's *service names* instead --
+Compose's internal DNS resolves `postgres` and `redis` to the right
+containers automatically. This override lives in `docker-compose.yml`, not
+`.env` -- you don't need to change `.env` for this.
+
+### Build and run
+
+```bash
+docker compose up -d --build
+```
+
+`--build` matters here specifically -- without it, Compose won't know to
+build the new `app` image on this first run.
+
+### Verify
+
+```bash
+docker compose ps
+```
+All three -- `knowledgeforge-postgres`, `knowledgeforge-redis`,
+`knowledgeforge-app` -- should show `Up` / `(healthy)`.
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+or open http://127.0.0.1:8000/docs -- same Swagger UI as Phase 5, now served
+from inside a container instead of your venv.
+
+### Running CLI tools inside the container
+
+```bash
+docker exec knowledgeforge-app python -m src.ingest
+docker exec knowledgeforge-app python -m src.eval
+```
+
+### If the build fails
+
+```bash
+docker compose logs app
+```
+paste the output -- common first-run issues are a slow `torch` download
+(just retry) or a typo carried over from a manual `.env` edit.
+
+## What's next (Phase 7)
+
+CI/CD -- a GitHub Actions workflow that lints, runs tests, runs Phase 3's
+eval as a merge gate, and builds this Docker image automatically on every push.
