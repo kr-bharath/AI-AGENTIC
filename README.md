@@ -1,3 +1,13 @@
+---
+title: KnowledgeForge AI
+emoji: 🔎
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # KnowledgeForge AI — Phase 1: Core RAG Pipeline
 
 [![CI](https://github.com/<kr-bharath>/<AI-AGENTIC>/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml)
