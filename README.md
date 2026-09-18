@@ -1,6 +1,6 @@
 # KnowledgeForge AI — Phase 1: Core RAG Pipeline
 
-[![CI](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml)
+[![CI](https://github.com/<kr-bharath>/<AI-AGENTIC>/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml)
 
 *Replace `<your-username>/<your-repo>` above with your actual GitHub path
 once this is pushed -- the badge won't render until then.*
