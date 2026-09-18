@@ -2,7 +2,6 @@
 Request/response schemas, kept separate from api.py so they're easy to
 scan on their own -- this is what a consumer of the API actually reads.
 """
-from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -15,16 +14,18 @@ class SourceRef(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, examples=["What is RAG?"])
-    provider: Optional[str] = Field(
+    provider: str | None = Field(
         None, description="Explicit override: 'gemini', 'groq', or 'local'. Bypasses cache/routing."
     )
-    top_k: Optional[int] = Field(None, ge=1, le=20)
-    optimize: bool = Field(True, description="Set false to force the plain cloud path (no cache/local routing).")
+    top_k: int | None = Field(None, ge=1, le=20)
+    optimize: bool = Field(
+        True, description="Set false to force the plain cloud path (no cache/local routing)."
+    )
 
 
 class AskResponse(BaseModel):
     answer: str
-    sources: List[SourceRef]
+    sources: list[SourceRef]
     route: str
 
 
@@ -35,8 +36,8 @@ class AgentRequest(BaseModel):
 class AgentResponse(BaseModel):
     answer: str
     task_type: str
-    sources: List[dict]
-    check_passed: Optional[bool] = None
+    sources: list[dict]
+    check_passed: bool | None = None
 
 
 class IngestResponse(BaseModel):
@@ -52,6 +53,6 @@ class SourceInfo(BaseModel):
 
 class MetricsResponse(BaseModel):
     postgresql_version: str
-    pgvector_version: Optional[str]
+    pgvector_version: str | None
     total_chunks: int
-    sources: List[SourceInfo]
+    sources: list[SourceInfo]

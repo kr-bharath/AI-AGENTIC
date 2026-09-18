@@ -12,7 +12,6 @@ exposed.
 """
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -38,7 +37,7 @@ app = FastAPI(
 )
 
 
-async def verify_api_key(x_api_key: Optional[str] = Header(None)):
+async def verify_api_key(x_api_key: str | None = Header(None)):
     """
     Blank config.API_KEY means auth is off (local dev default). Once set,
     every protected endpoint requires a matching X-API-Key header.
@@ -61,7 +60,7 @@ def metrics():
         health_info = db.health_check()
         sources = db.get_sources()
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database unavailable: {e}")
+        raise HTTPException(status_code=503, detail=f"Database unavailable: {e}") from e
 
     return MetricsResponse(
         postgresql_version=health_info["postgresql"],
@@ -81,9 +80,9 @@ def ask_endpoint(body: AskRequest):
             optimize=body.optimize,
         )
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Generation failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Generation failed: {e}") from e
 
     return AskResponse(**result)
 
@@ -93,7 +92,7 @@ def agent_endpoint(body: AgentRequest):
     try:
         result = run_agent(body.task)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Agent run failed: {e}")
+        raise HTTPException(status_code=502, detail=f"Agent run failed: {e}") from e
 
     return AgentResponse(
         answer=result.get("answer", ""),
@@ -124,7 +123,7 @@ async def ingest_endpoint(file: UploadFile = File(...)):
         try:
             chunks_stored = ingest_file(dest)
         except Exception as e:
-            raise HTTPException(status_code=422, detail=f"Ingestion failed: {e}")
+            raise HTTPException(status_code=422, detail=f"Ingestion failed: {e}") from e
 
     return IngestResponse(
         filename=file.filename,

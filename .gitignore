@@ -3,5 +3,9 @@ venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 *.egg-info/
 .DS_Store
+dump.rdb
+eval_report.md
+cost_optimization_report.md

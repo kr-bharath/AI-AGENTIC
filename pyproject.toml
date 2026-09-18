@@ -1,0 +1,36 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+# A focused, bug-catching baseline rather than every category ruff offers --
+# E/W (style), F (pyflakes -- real bugs: unused imports, undefined names),
+# I (import sorting), UP (modern syntax), B (bugbear), SIM (simplification).
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+# Every ignore below is a deliberate, already-tested design choice in this
+# codebase, not an unexamined suppression -- see the reasoning for each:
+ignore = [
+    # BLE001 (blind except): cache.py, llm.py, ask.py's local-model fallback,
+    # and every api.py error handler catch Exception on purpose -- the whole
+    # point (confirmed via tests) is failing open/gracefully on ANY error
+    # from an optional dependency (Redis, Ollama) or provider call, not just
+    # a pre-enumerated subset. Narrowing these would break that behavior.
+    "BLE001",
+    # S110 isn't in the `select` list above (it's in flake8-bandit, not
+    # included), listed here as documentation: cache.py's _touch() has a
+    # deliberate try/except/pass with an explanatory comment already in
+    # place -- it's a best-effort LRU optimization, never worth failing over.
+    # B008 (function-call-in-default-argument): FastAPI's dependency
+    # injection REQUIRES `= File(...)` / `= Depends(...)` as a default
+    # argument -- this is the framework's documented idiom, not a bug.
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files legitimately need broad excepts and long lines for clear
+# assertions -- same reasoning as above, just scoped to tests/.
+"tests/*" = ["BLE001", "E501"]

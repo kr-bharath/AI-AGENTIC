@@ -18,7 +18,7 @@ from statistics import mean
 
 from . import cache, config
 from .ask import ask
-from .eval import load_golden_set, GOLDEN_SET_PATH
+from .eval import GOLDEN_SET_PATH, load_golden_set
 
 REPORT_PATH = Path("cost_optimization_report.md")
 
@@ -49,7 +49,7 @@ def run_benchmark(golden_set_path: Path = GOLDEN_SET_PATH) -> dict:
     print(f"Pass 2/3: optimized, cold cache, {len(questions)} questions...")
     cold = _timed_pass(questions, optimize=True)
 
-    print(f"Pass 3/3: optimized, warm cache (same questions again)...")
+    print("Pass 3/3: optimized, warm cache (same questions again)...")
     warm = _timed_pass(questions, optimize=True)
 
     def route_counts(routes):
@@ -79,7 +79,8 @@ def write_report(summary: dict, path: Path = REPORT_PATH) -> None:
     saved_usd = summary["baseline_cost_usd"] - summary["warm_cost_usd"]
     saved_pct = (saved_usd / summary["baseline_cost_usd"] * 100) if summary["baseline_cost_usd"] else 0
     latency_improvement_pct = (
-        (summary["baseline_avg_latency"] - summary["warm_avg_latency"]) / summary["baseline_avg_latency"] * 100
+        (summary["baseline_avg_latency"] - summary["warm_avg_latency"])
+        / summary["baseline_avg_latency"] * 100
         if summary["baseline_avg_latency"] else 0
     )
 
@@ -106,13 +107,18 @@ def write_report(summary: dict, path: Path = REPORT_PATH) -> None:
         "## Estimated cost",
         "",
         f"- Baseline (all {summary['n_questions']} questions to cloud): ${summary['baseline_cost_usd']:.4f}",
-        f"- Warm-cache pass ({summary['warm_routes'].get('cloud', 0)} still hit cloud): ${summary['warm_cost_usd']:.4f}",
+        (
+            f"- Warm-cache pass ({summary['warm_routes'].get('cloud', 0)} still hit cloud): "
+            f"${summary['warm_cost_usd']:.4f}"
+        ),
         f"- **Estimated savings: ${saved_usd:.4f} ({saved_pct:.0f}%)**",
         "",
-        "*Cost figures are estimates based on `EST_COST_PER_CLOUD_CALL_USD` in .env "
-        "(free-tier APIs don't bill directly) -- they exist to make the savings "
-        "concrete, not as an exact invoice. Local Ollama and cache hits are "
-        "genuinely $0 regardless.*",
+        (
+            "*Cost figures are estimates based on `EST_COST_PER_CLOUD_CALL_USD` in .env "
+            "(free-tier APIs don't bill directly) -- they exist to make the savings "
+            "concrete, not as an exact invoice. Local Ollama and cache hits are "
+            "genuinely $0 regardless.*"
+        ),
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
 

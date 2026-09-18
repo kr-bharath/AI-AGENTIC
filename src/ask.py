@@ -13,7 +13,7 @@ from .llm import generate
 from .prompts import SYSTEM_QA, build_qa_prompt
 
 
-def ask(question: str, provider: str = None, top_k: int = None, optimize: bool = True) -> dict:
+def ask(question: str, provider: str | None = None, top_k: int | None = None, optimize: bool = True) -> dict:
     """
     provider: explicit override ("gemini"/"groq"/"local"). When set, this
     bypasses caching and local-routing entirely and behaves exactly like

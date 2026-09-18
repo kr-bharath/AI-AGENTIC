@@ -4,7 +4,6 @@ cost, no rate limit. This is deliberate: it keeps the most frequent operation
 in the whole pipeline (embedding every chunk and every query) completely free.
 """
 from functools import lru_cache
-from typing import List
 
 import numpy as np
 
@@ -20,13 +19,13 @@ def _get_model():
     return SentenceTransformer(config.EMBEDDING_MODEL_NAME)
 
 
-def embed_texts(texts: List[str]) -> List[List[float]]:
+def embed_texts(texts: list[str]) -> list[list[float]]:
     """Embed a batch of strings. Returns one vector per input string."""
     model = _get_model()
     vectors = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
     return np.asarray(vectors).tolist()
 
 
-def embed_query(text: str) -> List[float]:
+def embed_query(text: str) -> list[float]:
     """Embed a single query string."""
     return embed_texts([text])[0]

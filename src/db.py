@@ -14,14 +14,12 @@ Responsibilities:
 """
 
 from contextlib import contextmanager
-from typing import List, Tuple, Optional
 
 import psycopg2
 from pgvector.psycopg2 import register_vector
 
 from . import config
 from .tracing import observe
-
 
 # ============================================================
 # DATABASE CONNECTION
@@ -57,7 +55,7 @@ def get_connection():
 # VECTOR CONVERSION
 # ============================================================
 
-def _to_pgvector(values: List[float]) -> str:
+def _to_pgvector(values: list[float]) -> str:
     """
     Convert a Python list of floats into pgvector literal format.
 
@@ -90,7 +88,7 @@ def _to_pgvector(values: List[float]) -> str:
 # ============================================================
 
 def insert_chunks(
-    rows: List[Tuple[str, int, str, List[float]]]
+    rows: list[tuple[str, int, str, list[float]]]
 ) -> int:
     """
     Insert document chunks and embeddings.
@@ -111,26 +109,25 @@ def insert_chunks(
     if not rows:
         return 0
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            prepared_rows = []
+        prepared_rows = []
 
-            for source, chunk_index, content, embedding in rows:
+        for source, chunk_index, content, embedding in rows:
 
-                vector = _to_pgvector(embedding)
+            vector = _to_pgvector(embedding)
 
-                prepared_rows.append(
-                    (
-                        source,
-                        chunk_index,
-                        content,
-                        vector,
-                    )
+            prepared_rows.append(
+                (
+                    source,
+                    chunk_index,
+                    content,
+                    vector,
                 )
+            )
 
-            cur.executemany(
-                """
+        cur.executemany(
+            """
                 INSERT INTO chunks (
                     source,
                     chunk_index,
@@ -144,8 +141,8 @@ def insert_chunks(
                     %s::vector
                 )
                 """,
-                prepared_rows,
-            )
+            prepared_rows,
+        )
 
     return len(rows)
 
@@ -162,18 +159,17 @@ def delete_source(source: str) -> int:
     creating duplicate chunks.
     """
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            cur.execute(
-                """
+        cur.execute(
+            """
                 DELETE FROM chunks
                 WHERE source = %s
                 """,
-                (source,),
-            )
+            (source,),
+        )
 
-            return cur.rowcount
+        return cur.rowcount
 
 
 # ============================================================
@@ -182,15 +178,15 @@ def delete_source(source: str) -> int:
 
 @observe(name="vector_search", as_type="retriever")
 def search(
-    query_embedding: List[float],
-    top_k: Optional[int] = None,
+    query_embedding: list[float],
+    top_k: int | None = None,
 ):
     """
     Perform cosine-similarity vector search using pgvector.
 
     pgvector operator:
 
-        <=> 
+        <=>
 
     calculates cosine distance.
 
@@ -225,11 +221,10 @@ def search(
     # Convert Python list into an explicit pgvector literal.
     query_vector = _to_pgvector(query_embedding)
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            cur.execute(
-                """
+        cur.execute(
+            """
                 SELECT
                     source,
                     chunk_index,
@@ -240,14 +235,14 @@ def search(
                 ORDER BY embedding <=> %s::vector ASC
                 LIMIT %s
                 """,
-                (
-                    query_vector,
-                    query_vector,
-                    top_k,
-                ),
-            )
+            (
+                query_vector,
+                query_vector,
+                top_k,
+            ),
+        )
 
-            rows = cur.fetchall()
+        rows = cur.fetchall()
 
     results = []
 
@@ -274,17 +269,16 @@ def chunk_count() -> int:
     Return total number of chunks in the database.
     """
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            cur.execute(
-                """
+        cur.execute(
+            """
                 SELECT COUNT(*)
                 FROM chunks
                 """
-            )
+        )
 
-            result = cur.fetchone()
+        result = cur.fetchone()
 
     return int(result[0])
 
@@ -298,11 +292,10 @@ def get_sources():
     Return all document sources and their chunk counts.
     """
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            cur.execute(
-                """
+        cur.execute(
+            """
                 SELECT
                     source,
                     COUNT(*) AS chunk_count
@@ -310,9 +303,9 @@ def get_sources():
                 GROUP BY source
                 ORDER BY source
                 """
-            )
+        )
 
-            rows = cur.fetchall()
+        rows = cur.fetchall()
 
     return [
         {
@@ -332,36 +325,35 @@ def health_check() -> dict:
     Return basic PostgreSQL and pgvector information.
     """
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            # PostgreSQL version
-            cur.execute(
-                "SELECT version()"
-            )
+        # PostgreSQL version
+        cur.execute(
+            "SELECT version()"
+        )
 
-            postgres_version = cur.fetchone()[0]
+        postgres_version = cur.fetchone()[0]
 
-            # pgvector version
-            cur.execute(
-                """
+        # pgvector version
+        cur.execute(
+            """
                 SELECT extversion
                 FROM pg_extension
                 WHERE extname = 'vector'
                 """
-            )
+        )
 
-            vector_result = cur.fetchone()
+        vector_result = cur.fetchone()
 
-            # Number of chunks
-            cur.execute(
-                """
+        # Number of chunks
+        cur.execute(
+            """
                 SELECT COUNT(*)
                 FROM chunks
                 """
-            )
+        )
 
-            chunk_total = cur.fetchone()[0]
+        chunk_total = cur.fetchone()[0]
 
     return {
         "postgresql": postgres_version,
@@ -379,8 +371,8 @@ def health_check() -> dict:
 # ============================================================
 
 def debug_search(
-    query_embedding: List[float],
-    top_k: Optional[int] = None,
+    query_embedding: list[float],
+    top_k: int | None = None,
 ):
     """
     Debug helper for vector retrieval.
@@ -399,22 +391,21 @@ def debug_search(
     if top_k is None:
         top_k = config.TOP_K
 
-    with get_connection() as conn:
-        with conn.cursor() as cur:
+    with get_connection() as conn, conn.cursor() as cur:
 
-            # Total documents
-            cur.execute(
-                """
+        # Total documents
+        cur.execute(
+            """
                 SELECT COUNT(*)
                 FROM chunks
                 """
-            )
+        )
 
-            total_chunks = cur.fetchone()[0]
+        total_chunks = cur.fetchone()[0]
 
-            # Stored vector dimensions
-            cur.execute(
-                """
+        # Stored vector dimensions
+        cur.execute(
+            """
                 SELECT
                     source,
                     chunk_index,
@@ -422,13 +413,13 @@ def debug_search(
                 FROM chunks
                 WHERE embedding IS NOT NULL
                 """
-            )
+        )
 
-            dimensions = cur.fetchall()
+        dimensions = cur.fetchall()
 
-            # Actual vector search
-            cur.execute(
-                """
+        # Actual vector search
+        cur.execute(
+            """
                 SELECT
                     source,
                     chunk_index,
@@ -438,14 +429,14 @@ def debug_search(
                 ORDER BY embedding <=> %s::vector ASC
                 LIMIT %s
                 """,
-                (
-                    query_vector,
-                    query_vector,
-                    int(top_k),
-                ),
-            )
+            (
+                query_vector,
+                query_vector,
+                int(top_k),
+            ),
+        )
 
-            search_results = cur.fetchall()
+        search_results = cur.fetchall()
 
     return {
         "total_chunks": total_chunks,

@@ -9,7 +9,7 @@ from . import config
 from .tracing import observe
 
 
-def _generate_gemini(prompt: str, system: str = None) -> str:
+def _generate_gemini(prompt: str, system: str | None = None) -> str:
     import google.generativeai as genai
 
     genai.configure(api_key=config.GEMINI_API_KEY)
@@ -27,7 +27,7 @@ def _generate_gemini(prompt: str, system: str = None) -> str:
     return response.text
 
 
-def _generate_groq(prompt: str, system: str = None) -> str:
+def _generate_groq(prompt: str, system: str | None = None) -> str:
     from groq import Groq
 
     # max_retries=0: same reasoning as Gemini's retry=None above -- the groq
@@ -48,7 +48,7 @@ def _generate_groq(prompt: str, system: str = None) -> str:
     return response.choices[0].message.content
 
 
-def _generate_local(prompt: str, system: str = None) -> str:
+def _generate_local(prompt: str, system: str | None = None) -> str:
     """
     Phase 4: routes simple questions here instead of a cloud API -- genuinely
     $0 per call, but only useful if the person has Ollama installed and
@@ -114,7 +114,7 @@ def _with_retry(fn, max_retries: int = 3, base_delay: float = 10.0):
 
 
 @observe(name="llm_generate", as_type="generation")
-def generate(prompt: str, system: str = None, provider: str = None) -> str:
+def generate(prompt: str, system: str | None = None, provider: str | None = None) -> str:
     """
     provider: "gemini" | "groq" | "local" | None (falls back to config.LLM_PROVIDER)
 

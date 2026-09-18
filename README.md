@@ -1,5 +1,10 @@
 # KnowledgeForge AI — Phase 1: Core RAG Pipeline
 
+[![CI](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-username>/<your-repo>/actions/workflows/ci.yml)
+
+*Replace `<your-username>/<your-repo>` above with your actual GitHub path
+once this is pushed -- the badge won't render until then.*
+
 A grounded question-answering CLI: ingest documents, ask questions, get answers
 cited to their source chunks. Built entirely on free tools — local embeddings,
 free-tier LLM APIs, self-hosted Postgres+pgvector.
@@ -446,7 +451,75 @@ docker compose logs app
 paste the output -- common first-run issues are a slow `torch` download
 (just retry) or a typo carried over from a manual `.env` edit.
 
-## What's next (Phase 7)
+## Phase 7: CI/CD
 
-CI/CD -- a GitHub Actions workflow that lints, runs tests, runs Phase 3's
-eval as a merge gate, and builds this Docker image automatically on every push.
+Adds `.github/workflows/ci.yml`, a real `tests/` directory (converting every
+ad-hoc test written across Phases 1-6 into permanent pytest files -- 50 tests
+total, all passing), and `pyproject.toml`/`requirements-dev.txt` to support both.
+
+### Four jobs, deliberately not all triggered the same way
+
+| Job | Trigger | Needs a real API key? | What it does |
+|---|---|---|---|
+| `lint` | every push/PR | No | `ruff check src/ tests/` |
+| `test` | every push/PR | No | `pytest tests/` (50 tests, all mocked LLM calls -- only a Redis service container needed, for real cosine-similarity math) |
+| `eval-gate` | **manual only** (Actions tab -> Run workflow) | Yes | Ingests the sample doc into a real Postgres, runs Phase 3's eval harness for real, uploads `eval_report.md` as an artifact |
+| `docker-build-push` | push to `main` | No | Builds the Phase 6 Dockerfile, pushes to `ghcr.io/<your-repo>` |
+
+### Why the eval gate isn't automatic
+
+This project's free-tier quotas got hit hard and repeatedly during
+development -- as low as 20 requests/day on one model. The eval harness
+makes ~24 LLM calls per run (12 questions x answer + judge). Running that
+automatically on every push would mean CI alone could exhaust a day's quota
+before you'd written a single line of code that day. So it's manual: trigger
+it from the **Actions** tab when you actually want a scored run. If you
+later have more headroom (a paid tier, a dedicated CI-only key), it's a
+one-line change -- add `push: branches: [main]` to the trigger list in
+`ci.yml`.
+
+### Set up the secrets
+
+In your GitHub repo: **Settings -> Secrets and variables -> Actions -> New
+repository secret**. Add whichever of these you use:
+- `GEMINI_API_KEY`
+- `GROQ_API_KEY`
+
+The workflow picks whichever is present automatically (prefers Gemini if
+both are set). `GITHUB_TOKEN` for the Docker push needs no setup -- GitHub
+provides it automatically to every workflow run.
+
+### Test job design note
+
+Only `test`'s Redis service container is real infrastructure -- every test
+that touches Postgres mocks `src.db` directly (confirmed: all 50 tests pass
+locally with zero Postgres running). Only the semantic-cache tests need a
+genuinely live Redis, since the whole point there is testing real
+cosine-similarity math, not a mocked stand-in for it.
+
+### Run everything locally, exactly like CI does
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+ruff check src/ tests/
+pytest tests/ -v
+```
+
+### Push and watch it run
+
+```bash
+git add .
+git commit -m "Phase 7: CI/CD"
+git push
+```
+
+Then check the **Actions** tab on GitHub. Once it's green, update the badge
+URL at the top of this README with your actual `username/repo`.
+
+## Project complete
+
+Seven phases, all fifteen target skills, every single piece verified by a
+real run (yours or mine) before being called done -- not just written and
+hoped to work. This is the whole point: not a tutorial you followed, but a
+system you can explain, defend, and extend, because you watched every part
+of it actually break and get fixed at least once.

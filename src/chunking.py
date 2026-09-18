@@ -3,12 +3,11 @@ Simple word-based sliding-window chunker.
 Good enough for Phase 1 — swap for a token-aware or semantic chunker later
 if you want to demonstrate that refinement in interviews.
 """
-from typing import List
 
 from . import config
 
 
-def chunk_text(text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
+def chunk_text(text: str, chunk_size: int | None = None, overlap: int | None = None) -> list[str]:
     """
     Split `text` into overlapping chunks, measured in words.
 

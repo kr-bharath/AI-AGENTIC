@@ -21,7 +21,7 @@ Graph shape:
                                        END
 """
 import argparse
-from typing import Dict, List, Optional, TypedDict
+from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
@@ -29,11 +29,11 @@ from . import config, db
 from .embeddings import embed_query
 from .llm import generate
 from .prompts import (
+    ROUTER_TEMPLATE,
     SYSTEM_COMPARISON,
     SYSTEM_QA,
     SYSTEM_ROUTER,
     SYSTEM_SELF_CHECK,
-    ROUTER_TEMPLATE,
     build_comparison_prompt,
     build_qa_prompt,
     build_self_check_prompt,
@@ -54,15 +54,15 @@ MAX_RETRIES = 1  # bounded self-check retry -- never loop forever
 class AgentState(TypedDict, total=False):
     task: str
     task_type: str
-    retrieved: List[dict]
-    context_by_source: Dict[str, List[dict]]
+    retrieved: list[dict]
+    context_by_source: dict[str, list[dict]]
     answer: str
     check_passed: bool
     check_feedback: str
     retry_count: int
 
 
-def classify_task(task: str, provider: Optional[str] = None) -> str:
+def classify_task(task: str, provider: str | None = None) -> str:
     lowered = task.lower()
     if any(kw in lowered for kw in MULTI_STEP_KEYWORDS):
         return "multi_step"
@@ -86,7 +86,7 @@ def retrieve_node(state: AgentState) -> dict:
             "answer": NO_DOCS_MESSAGE,
         }
 
-    context_by_source: Dict[str, List[dict]] = {}
+    context_by_source: dict[str, list[dict]] = {}
     for r in retrieved:
         context_by_source.setdefault(r["source"], []).append(r)
 

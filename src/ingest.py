@@ -52,7 +52,7 @@ def ingest_file(path: Path) -> int:
     source_name = path.name
     db.delete_source(source_name)  # idempotent re-ingest
     rows = [
-        (source_name, i, chunk, emb) for i, (chunk, emb) in enumerate(zip(chunks, embeddings))
+        (source_name, i, chunk, emb) for i, (chunk, emb) in enumerate(zip(chunks, embeddings, strict=True))
     ]
     inserted = db.insert_chunks(rows)
     print(f"  ok {path.name}: {inserted} chunks")

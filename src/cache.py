@@ -20,7 +20,6 @@ Design notes (worth stating explicitly, since they're real tradeoffs):
 """
 import json
 import uuid
-from typing import Optional
 
 import numpy as np
 
@@ -52,7 +51,7 @@ def _get_client():
     return _client
 
 
-def get(question: str) -> Optional[str]:
+def get(question: str) -> str | None:
     """Return a cached answer if a sufficiently similar question was asked
     before, else None. Never raises -- a cache miss and a cache error look
     the same to the caller."""

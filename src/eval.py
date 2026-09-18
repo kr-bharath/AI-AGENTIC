@@ -27,7 +27,7 @@ DEFAULT_REPORT_PATH = Path("eval_report.md")
 
 
 def load_golden_set(path: Path = GOLDEN_SET_PATH) -> list:
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
